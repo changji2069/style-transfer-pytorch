@@ -165,6 +165,17 @@ class Scale(nn.Module):
     def forward(self, *args, **kwargs):
         return self.module(*args, **kwargs) * self.scale
 
+class MaskApply(nn.Module):
+    def __init__(self, module, mask):
+        super().__init__()
+        self.module = module
+        self.register_buffer('mask', torch.tensor(mask))
+
+    def extra_repr(self):
+        return f'(mask): {self.mask}'
+
+    def forward(self, *args, **kwargs):
+        return self.module(*args, **kwargs) * self.scale
 
 class LayerApply(nn.Module):
     def __init__(self, module, layer):
@@ -291,7 +302,7 @@ class StyleTransfer:
             else:
                 raise ValueError("image_type must be 'pil' or 'np_uint16'")
 
-    def stylize(self, content_image, style_images, *,
+    def stylize(self, content_image, style_images,style_mask, *,
                 style_weights=None,
                 content_weight: float = 0.015,
                 tv_weight: float = 2.,
@@ -373,6 +384,10 @@ class StyleTransfer:
                 # Take the weighted average of multiple style targets (Gram matrices).
                 for layer in self.style_layers:
                     target = StyleLoss.get_target(style_feats[layer]) * style_weights[i]
+                    print('target information is ...')
+                    print(target)
+                    print('style_mask is...')
+                    print(style_mask)
                     if layer not in style_targets:
                         style_targets[layer] = target
                     else:

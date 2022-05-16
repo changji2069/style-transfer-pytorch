@@ -154,6 +154,7 @@ def main():
 
     p.add_argument('content', type=str, help='the content image')
     p.add_argument('styles', type=str, nargs='+', metavar='style', help='the style images')
+    p.add_argument('style_mask', type=str, help='the style_mask image')
     p.add_argument('--output', '-o', type=str, default='out.png',
                    help='the output image')
     p.add_argument('--style-weights', '-sw', type=float, nargs='+', default=None,
@@ -202,6 +203,10 @@ def main():
     args = p.parse_args()
 
     content_img = load_image(args.content, args.proof)
+    if args.style_mask != 'None':
+        style_mask = load_image(args.content, args.proof)
+    else:
+        style_mask = 'None'
     style_imgs = [load_image(img, args.proof) for img in args.styles]
 
     image_type = 'pil'
@@ -256,7 +261,7 @@ def main():
     defaults = StyleTransfer.stylize.__kwdefaults__
     st_kwargs = {k: v for k, v in args.__dict__.items() if k in defaults}
     try:
-        st.stylize(content_img, style_imgs, **st_kwargs, callback=callback)
+        st.stylize(content_img, style_imgs, style_mask, **st_kwargs, callback=callback)
     except KeyboardInterrupt:
         pass
 
