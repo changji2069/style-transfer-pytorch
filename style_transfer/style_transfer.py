@@ -384,10 +384,17 @@ class StyleTransfer:
                 # Take the weighted average of multiple style targets (Gram matrices).
                 for layer in self.style_layers:
                     target = StyleLoss.get_target(style_feats[layer]) * style_weights[i]
-                    print('target information is ...')
-                    print(target)
-                    print('style_mask is...')
-                    print(style_mask)
+                    
+                    if style_mask != 'None':
+                        print('style_mask is...')
+                        print(style_mask)
+                        style_mask2 = style_mask.resize(target.shape[1:])
+                        style_mask2 = TF.to_tensor(style_mask2)
+                        style_mask2 = style_mask2.to(self.devices[0])
+
+                        print('style_mask2')
+                        print(style_mask2)
+                        target = target * style_mask2  
                     if layer not in style_targets:
                         style_targets[layer] = target
                     else:
