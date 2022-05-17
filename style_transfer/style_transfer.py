@@ -367,8 +367,21 @@ class StyleTransfer:
             print(f'Processing content image ({cw}x{ch})...')
             content_feats = self.model(content, layers=self.content_layers)
             content_losses = []
+            maxPoolCJMask = nn.MaxPool2d(2)
             for layer, weight in zip(self.content_layers, content_weights):
-                target = content_feats[layer]
+                # If style_mask is supplied, apply masking to the pre-unrolled content feature
+                if style_mask != 'None':
+                    style_mask2 = style_mask.convert('L')
+                    style_mask2 = TF.to_tensor(style_mask2)
+                    try:
+                        while style_mask2.shape[1:] != content_feats[layer].shape[2:]:
+                            style_mask2 = maxPoolCJMask(style_mask2)
+                    except:
+                        style_mask2 = TF.to_tensor(style_mask.convert('L').resize(content_feats[layer].shape[2:]))
+                    style_mask2 = style_mask2.to(self.devices[0])
+
+                    myown_content_feats = content_feats[layer] * style_mask2
+                target = myown_content_feats
                 content_losses.append(Scale(LayerApply(ContentLoss(target), layer), weight))
 
             style_targets, style_losses = {}, []
@@ -383,22 +396,22 @@ class StyleTransfer:
                 style_feats = self.model(style, layers=self.style_layers)
                 # Take the weighted average of multiple style targets (Gram matrices).
 
-                maxPoolCJMask = nn.MaxPool2d(2)
+                # maxPoolCJMask = nn.MaxPool2d(2)
 
                 for layer in self.style_layers: #  [1, 6, 11, 20, 29]
-                    # If style_mask is supplied, apply masking to the pre-unrolled style feature
-                    if style_mask != 'None':
-                        style_mask2 = style_mask.convert('L')
-                        style_mask2 = TF.to_tensor(style_mask2)
-                        try:
-                          while style_mask2.shape[1:] != style_feats[layer].shape[2:]:
-                            style_mask2 = maxPoolCJMask(style_mask2)
-                        except:
-                          style_mask2 = TF.to_tensor(style_mask.convert('L').resize(style_feats[layer].shape[2:]))
-                        style_mask2 = style_mask2.to(self.devices[0])
+                    # # If style_mask is supplied, apply masking to the pre-unrolled style feature
+                    # if style_mask != 'None':
+                    #     style_mask2 = style_mask.convert('L')
+                    #     style_mask2 = TF.to_tensor(style_mask2)
+                    #     try:
+                    #       while style_mask2.shape[1:] != style_feats[layer].shape[2:]:
+                    #         style_mask2 = maxPoolCJMask(style_mask2)
+                    #     except:
+                    #       style_mask2 = TF.to_tensor(style_mask.convert('L').resize(style_feats[layer].shape[2:]))
+                    #     style_mask2 = style_mask2.to(self.devices[0])
 
-                        myown_style_feats = style_feats[layer] * style_mask2
-                    target = StyleLoss.get_target(myown_style_feats) * style_weights[i]
+                    #     myown_style_feats = style_feats[layer] * style_mask2
+                    target = StyleLoss.get_target(style_feats[layer]) * style_weights[i]
 
                     if layer not in style_targets:
                         style_targets[layer] = target
