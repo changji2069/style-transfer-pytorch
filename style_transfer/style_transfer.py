@@ -269,8 +269,8 @@ class StyleTransfer:
         self.average = None
 
         # The default content and style layers follow Gatys et al. (2015).
-        self.content_layers = [22]
-        self.style_layers = [1, 6, 11, 20, 29]
+        self.content_layers = [22]  # CONV layer to extract content feature
+        self.style_layers = [1, 6, 11, 20, 29]  # CONV layer to extract style feature
 
         # The weighting of the style layers differs from Gatys et al. (2015) and Johnson et al.
         style_weights = [256, 64, 16, 4, 1]
@@ -382,19 +382,24 @@ class StyleTransfer:
                 print(f'Processing style image ({sw}x{sh})...')
                 style_feats = self.model(style, layers=self.style_layers)
                 # Take the weighted average of multiple style targets (Gram matrices).
-                for layer in self.style_layers:
-                    target = StyleLoss.get_target(style_feats[layer]) * style_weights[i]
-                    
+
+                maxPoolCJMask = nn.MaxPool2d(2)
+
+                for layer in self.style_layers: #  [1, 6, 11, 20, 29]
+                    # If style_mask is supplied, apply masking to the pre-unrolled style feature
                     if style_mask != 'None':
-                        print('style_mask is...')
-                        print(style_mask)
-                        style_mask2 = style_mask.resize(target.shape[1:])
+                        style_mask2 = style_mask.convert('L')
                         style_mask2 = TF.to_tensor(style_mask2)
+                        try:
+                          while style_mask2.shape[1:] != style_feats[layer].shape[2:]:
+                            style_mask2 = maxPoolCJMask(style_mask2)
+                        except:
+                          style_mask2 = TF.to_tensor(style_mask.convert('L').resize(style_feats[layer].shape[2:]))
                         style_mask2 = style_mask2.to(self.devices[0])
 
-                        print('style_mask2')
-                        print(style_mask2)
-                        target = target * style_mask2  
+                        myown_style_feats = style_feats[layer] * style_mask2
+                    target = StyleLoss.get_target(myown_style_feats) * style_weights[i]
+
                     if layer not in style_targets:
                         style_targets[layer] = target
                     else:

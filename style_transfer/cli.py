@@ -204,7 +204,7 @@ def main():
 
     content_img = load_image(args.content, args.proof)
     if args.style_mask != 'None':
-        style_mask = load_image(args.content, args.proof)
+        style_mask = load_image(args.style_mask, args.proof)
     else:
         style_mask = 'None'
     style_imgs = [load_image(img, args.proof) for img in args.styles]
